@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tennis Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        
+        canvas {
+            border: 2px solid #fff;
+            background-color: #006600;
+        }
+        
+        .controls {
+            color: white;
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+        
+        .score {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .instructions {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="score">
+            <span>プレイヤー1: <span id="player1Score">0</span></span>
+            <span style="margin: 0 20px;">-</span>
+            <span>プレイヤー2: <span id="player2Score">0</span></span>
+        </div>
+        <div class="instructions">
+            プレイヤー1: W/S キー | プレイヤー2: ↑/↓ キー
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const game = {
+            width: canvas.width,
+            height: canvas.height,
+            player1Score: 0,
+            player2Score: 0
+        };
+        
+        const paddle = {
+            width: 10,
+            height: 80,
+            speed: 5
+        };
+        
+        const player1 = {
+            x: 10,
+            y: game.height / 2 - paddle.height / 2,
+            width: paddle.width,
+            height: paddle.height,
+            dy: 0
+        };
+        
+        const player2 = {
+            x: game.width - paddle.width - 10,
+            y: game.height / 2 - paddle.height / 2,
+            width: paddle.width,
+            height: paddle.height,
+            dy: 0
+        };
+        
+        const ball = {
+            x: game.width / 2,
+            y: game.height / 2,
+            radius: 8,
+            dx: 4,
+            dy: 3
+        };
+        
+        const keys = {};
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        function updatePaddles() {
+            if (keys['w'] || keys['W']) {
+                player1.dy = -paddle.speed;
+            } else if (keys['s'] || keys['S']) {
+                player1.dy = paddle.speed;
+            } else {
+                player1.dy = 0;
+            }
+            
+            if (keys['ArrowUp']) {
+                player2.dy = -paddle.speed;
+            } else if (keys['ArrowDown']) {
+                player2.dy = paddle.speed;
+            } else {
+                player2.dy = 0;
+            }
+            
+            player1.y += player1.dy;
+            player2.y += player2.dy;
+            
+            player1.y = Math.max(0, Math.min(game.height - paddle.height, player1.y));
+            player2.y = Math.max(0, Math.min(game.height - paddle.height, player2.y));
+        }
+        
+        function updateBall() {
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+            
+            if (ball.y - ball.radius <= 0 || ball.y + ball.radius >= game.height) {
+                ball.dy = -ball.dy;
+            }
+            
+            if (ball.x - ball.radius <= player1.x + player1.width &&
+                ball.y >= player1.y &&
+                ball.y <= player1.y + player1.height) {
+                ball.dx = -ball.dx;
+                ball.x = player1.x + player1.width + ball.radius;
+            }
+            
+            if (ball.x + ball.radius >= player2.x &&
+                ball.y >= player2.y &&
+                ball.y <= player2.y + player2.height) {
+                ball.dx = -ball.dx;
+                ball.x = player2.x - ball.radius;
+            }
+            
+            if (ball.x < 0) {
+                game.player2Score++;
+                resetBall();
+                updateScore();
+            } else if (ball.x > game.width) {
+                game.player1Score++;
+                resetBall();
+                updateScore();
+            }
+        }
+        
+        function resetBall() {
+            ball.x = game.width / 2;
+            ball.y = game.height / 2;
+            ball.dx = Math.random() > 0.5 ? 4 : -4;
+            ball.dy = (Math.random() - 0.5) * 6;
+        }
+        
+        function updateScore() {
+            document.getElementById('player1Score').textContent = game.player1Score;
+            document.getElementById('player2Score').textContent = game.player2Score;
+        }
+        
+        function drawRect(x, y, width, height, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, width, height);
+        }
+        
+        function drawCircle(x, y, radius, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawDashedLine() {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 15]);
+            ctx.beginPath();
+            ctx.moveTo(game.width / 2, 0);
+            ctx.lineTo(game.width / 2, game.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        function render() {
+            drawRect(0, 0, game.width, game.height, '#006600');
+            
+            drawDashedLine();
+            
+            drawRect(player1.x, player1.y, player1.width, player1.height, '#fff');
+            drawRect(player2.x, player2.y, player2.width, player2.height, '#fff');
+            
+            drawCircle(ball.x, ball.y, ball.radius, '#fff');
+        }
+        
+        function gameLoop() {
+            updatePaddles();
+            updateBall();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        gameLoop();
+    </script>
+</body>
+</html>
